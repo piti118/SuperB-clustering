@@ -29,7 +29,7 @@ assert(event_min==0)
 event_max = max(x[event_index] for x in v)
 num_event = event_max+1
 #print num_event
-barrel_theta_min=20#inclusive
+barrel_theta_min=0#inclusive
 barrel_theta_max=120#exclusive
 barrel_phi_min=20#inclusive
 barrel_phi_max=68#exclusive
