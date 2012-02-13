@@ -5,7 +5,9 @@ from matplotlib.colors import *
 from pylab import *
 from matplotlib.widgets import Slider, Button, RadioButtons
 import matplotlib.pyplot as plt
+from collections import defaultdict,OrderedDict
 from math import pow
+
 def readfile():
     f = open('qa-recluster-x2-crystals.txt')
     v = [x for x in csv.reader(f,delimiter=' ')]
@@ -206,12 +208,13 @@ class Visualizer:
         ax.set_ylim((barrel_phi_min,barrel_phi_max))
         ax.grid(True)
         return ax,p
+    
     @classmethod
     def show_seeds(self,seeds,hits, ax=None,cutoff=None):
         if ax is None: ax = gca()
         p=[]
         for seed in seeds:
-            print seed
+            #print seed
             q = ax.plot(seed[1],seed[0],'x')
             p.append(q)
         ax.set_xlim((barrel_theta_min,barrel_theta_max))
