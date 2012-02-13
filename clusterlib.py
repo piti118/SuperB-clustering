@@ -28,51 +28,84 @@ event_min = min(x[event_index] for x in v)
 assert(event_min==0)
 event_max = max(x[event_index] for x in v)
 num_event = event_max+1
+
 #print num_event
-barrel_theta_min=0#inclusive
-barrel_theta_max=120#exclusive
-barrel_phi_min=20#inclusive
-barrel_phi_max=68#exclusive
-num_gui_fig = 4
+barrel_phi_min=0#inclusive
+barrel_phi_max=120#exclusive
+barrel_theta_min=20#inclusive
+barrel_theta_max=68#exclusive
 
 
-class Cluster:
-    vmin = 1e-2
-    vmax = 1e-1
-    cutoff = 1e-5
-    img=None
+class HitMap:
     def __init__(self):
         #hits is structred as theta,phi
-        self.hits = np.zeros((num_theta,num_phi))
+        self.hits = np.zeros((num_phi,num_theta))
         pass
     def acc(self,x): #x are array(eventno thetaindex, phiindex, energy) from v
-        self.hits[x[theta_index],x[phi_index]]+=x[e_index]
-    def draw(self,ax=None):
-        if ax is None: ax = gca()
-        toshow=np.copy(self.hits)
-        #print np.amax(self.hits)
-        toshow[toshow<self.cutoff]=None
-        self.img = ax.imshow(toshow,
-               #norm=LogNorm(vmin=1e-8,vmax=0.1),
-               norm=Normalize(vmin=self.vmin,vmax=self.vmin),
-               vmin=self.vmin,vmax=self.vmax,
-               aspect='auto',interpolation='nearest')
-        ax.set_xlim((barrel_theta_min,barrel_theta_max))
-        ax.set_ylim((barrel_phi_min,barrel_phi_max))
-        #colorbar()
-        #print dir(self.img)
-        ax.grid(True)
-    def update(self):
-        toshow=np.copy(self.hits)
-        #print np.amax(self.hits)
-        print self.cutoff
-        toshow[toshow<self.cutoff]=None
-        self.img.set_data(toshow)
-    def min(self):
-        return np.amin(self.hits,norm=Normalize(vmin=self.vmin,vmax=self.vmin),
-           vmin=self.vmin,vmax=self.vmax,
-           aspect='auto',interpolation='nearest')
+        self.hits[x[phi_index],x[theta_index]]+=x[e_index] #imshow maps first index to y axis and second to x axis
+    def compute_laplacian(self):
+        self.lpc = laplacian(self.hits)
+    def sumE(self,cluster):
+        return self.sumE_from_hits(self.hits,cluster)
+    @classmethod
+    def sumE_from_hits(self,hits,cluster):
+        xlist,ylist = zip(*cluster)
+        return np.sum(hits[xlist,ylist])
 
+class Clustering:
+    seed_cutoff = 0.025 #25MeV default
+    expand_cutoff = 0.005 #5MeV
+    directions = [[-1,0],[0,-1],[1,0],[0,1]] #how cluster look around uldr
+    def __init__(self):
+        pass
+    #return ordereddict of seed
+    def find_seed(self,hitmap):
+        hm=hitmap
+        seedlist = zip(*np.where(hm>self.seed_cutoff))
+        seedlist.sort(key=lambda x: hm[x])        
+        od = OrderedDict()
+        for p in seedlist: 
+            od[p] = hm[p]
+        return od
+    #return list of set of tuple of corrdinates
+    #each set is one cluster
+    #also note that seedod is passed by reference and will have it value change(empty upon return)
+    def find_clusters(self,hitmap,seedod=None):
+        hm = hitmap.hits
+        #making seedlist put in ordered dict
+        if seedod is None: seedod = self.find_seed(hm)
+        clusters = []
+        while len(seedod)!=0:
+            seed,E = seedod.popitem()
+            #print seed,E
+            cluster_so_far = set()
+            cluster_so_far.update([seed])
+            this_cluster = self.expand_cluster(seed,hm,cluster_so_far,seed)
+            #remove seed if seed in this cluster
+            for hit_pos in this_cluster:
+                if hit_pos in seedod: del seedod[hit_pos]
+            clusters.append(this_cluster)
+        return clusters
+
+    #recursively expand cluster from given seed
+    #note that cluster_so_far is passed by reference and it acts as accumulator
+    #last argument is the original seed from this cluster(for calculating upper cutoff)
+    def expand_cluster(self,seed,hits,cluster_so_far,org_seed):
+        #look in 4 direction
+        for direction in self.directions:
+            neighbor = self.add_direction(seed,direction)
+            if neighbor not in cluster_so_far and self.passcut(neighbor,hits,org_seed):
+                cluster_so_far.update([neighbor])
+                self.expand_cluster(neighbor,hits,cluster_so_far,org_seed)
+        return cluster_so_far
+
+    def add_direction(self,org,direc):
+        return tuple([org[0]+direc[0],org[1]+direc[1]])
+
+    def passcut(self,pos,hits,org_seed):
+        return hits[pos]>self.expand_cutoff
+
+#assume seed list is sorted
 #these operations return array the same size as a
 #note that user is responsible for selecting only the region that makes sense
 #usually it's a[1:-1,1:-1]
@@ -140,35 +173,48 @@ def test_op():
    print gaussian_blur(a)
 #test_op()
 
-def plot_barrel(a,ax,theta_min=barrel_theta_min, theta_max=barrel_theta_max, phi_min=barrel_phi_min,phi_max=barrel_phi_max):
-    if ax is None: ax=gca()
-    self.img = ax.imshow(toshow,
-           aspect='auto',interpolation='nearest')  
-    ax.set_xlim((theta_min,theta_max))
-    ax.set_ylim((phi_min,phi_max))
-    return ax
-
-def main():
-    clusters = [Cluster() for i in range(num_event)]
-    for x in v: clusters[x[event_index]].acc(x)
-    fig = plt.figure()
-    for i in range(4):
-        fig.add_subplot(2,2,i+1)
-        clusters[i].draw()
-    fig.subplots_adjust(left=0.25, bottom=0.25)
-    axcolor = 'lightgoldenrodyellow'
+class Visualizer:
+    @classmethod
+    def show_hits(self,hits, ax=None,cutoff=None):
+        if ax is None: ax = gca()
+        toshow = np.copy(hits)
+        if(cutoff is not None):
+            toshow[toshow<cutoff] = None
+        img = ax.imshow(toshow,aspect='auto',interpolation='nearest',origin='lower')  
+        ax.set_xlim((barrel_theta_min,barrel_theta_max))
+        ax.set_ylim((barrel_phi_min,barrel_phi_max))
+        ax.grid(True,which='both')
+        return ax,img
+    
+    @classmethod
+    def show_cluster(self,clusters,ax=None,hits=None):
+        if ax is None: ax = gca()
+        p=[]
         
-    axcut = fig.add_axes([0.25, 0.1, 0.65, 0.03], axisbg=axcolor)
-    cutoff = Slider(axcut, 'Cutoff', -5, -1, valinit=-3)
-
-    def update(v):
-        for i in range(4):
-            clusters[i].cutoff=pow(10,cutoff.val)
-            clusters[i].update()
-        
-    cutoff.on_changed(update)
-
-    plt.show()
-
-if __name__ == '__main__':
-    main()
+        for cluster in clusters:
+            
+            cx,cy = zip(*cluster)
+            #print cx,cy
+            #yep y then x it's the way imshow works
+            q = ax.plot(cy,cx,'o')
+            p.append(q)
+            if hits is not None:
+                Ecl = HitMap.sumE_from_hits(hits,cluster)
+                #print Ecl,cluster
+                ax.annotate('%5.4f'%Ecl,xy=(cy[0],cx[0]))
+        ax.set_xlim((barrel_theta_min,barrel_theta_max))
+        ax.set_ylim((barrel_phi_min,barrel_phi_max))
+        ax.grid(True)
+        return ax,p
+    @classmethod
+    def show_seeds(self,seeds,hits, ax=None,cutoff=None):
+        if ax is None: ax = gca()
+        p=[]
+        for seed in seeds:
+            print seed
+            q = ax.plot(seed[1],seed[0],'x')
+            p.append(q)
+        ax.set_xlim((barrel_theta_min,barrel_theta_max))
+        ax.set_ylim((barrel_phi_min,barrel_phi_max))
+        ax.grid(True,which='both')
+        return ax,p
