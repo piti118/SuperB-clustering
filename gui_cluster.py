@@ -3,9 +3,9 @@ import matplotlib.pyplot as plt
 from clusterlib import *
 def main():
     #load data
-    hitmaps = [HitMap() for i in range(num_event)]
-    for x in v: hitmaps[x[event_index]].acc(x)
-    for c in hitmaps: c.compute_laplacian()
+    hmf = HitMapFile('qa-recluster-x2-crystals.txt')
+    hmf.process()
+    hitmaps = hmf.hitmaps()
     
     num_row=2
     num_col=3
@@ -28,12 +28,14 @@ def main():
         cluster = clustering.find_clusters(hitmaps[i],seeds)
         Visualizer.show_cluster(cluster,axs[i,2],hits)
         fig.canvas.draw()
+    
     axcolor = 'lightgoldenrodyellow'
     ax_seed_cutoff = fig.add_axes([0.25, 0.1, 0.65, 0.03], axisbg=axcolor)
     ax_min_expand  = fig.add_axes([0.25, 0.15, 0.65, 0.03], axisbg=axcolor)
     
     s_seed_cutoff = Slider(ax_seed_cutoff, 'seed_E_cut_off(GeV)', 0, 0.1, valinit=clustering.seed_cutoff)
     s_min_expand = Slider(ax_min_expand, 'expand_min_E(GeV)', 0, 0.020, valinit=clustering.expand_cutoff)
+    
     def update(v):
         clustering.seed_cutoff=s_seed_cutoff.val
         clustering.expand_cutoff=s_min_expand.val
@@ -46,7 +48,6 @@ def main():
             cluster = clustering.find_clusters(hitmaps[i],seeds)
             Visualizer.show_cluster(cluster,axs[i,2],hitmaps[i].hits)
             
-        
     s_seed_cutoff.on_changed(update)
     s_min_expand.on_changed(update)
     plt.show()

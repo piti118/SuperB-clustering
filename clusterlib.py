@@ -1,5 +1,6 @@
 import csv
 import numpy as np
+import sys
 from collections import defaultdict
 from matplotlib.colors import *
 from pylab import *
@@ -8,47 +9,81 @@ import matplotlib.pyplot as plt
 from collections import defaultdict,OrderedDict
 from math import pow
 
-def readfile():
-    f = open('qa-recluster-x2-crystals.txt')
-    v = [x for x in csv.reader(f,delimiter=' ')]
-    v = [ [int(x[0]), int(x[3]), int(x[6]), float(x[9])] for x in v]
-    return v
-v=readfile()
-event_index = 0
-theta_index = 1
-phi_index = 2
-e_index = 3
-theta_min = min(x[theta_index] for x in v)
-assert(theta_min==0)
-theta_max = max(x[theta_index] for x in v)
-num_theta = theta_max+1
-phi_min = min(x[phi_index] for x in v)
-assert(phi_min==0)
-phi_max = max(x[phi_index] for x in v)
-num_phi = phi_max+1
-event_min = min(x[event_index] for x in v)
-assert(event_min==0)
-event_max = max(x[event_index] for x in v)
-num_event = event_max+1
-
-#print num_event
 barrel_phi_min=0#inclusive
 barrel_phi_max=120#exclusive
 barrel_theta_min=20#inclusive
 barrel_theta_max=68#exclusive
 
+class HitMapFile:
+    v=None
+    event_index = 0
+    theta_index = 1
+    phi_index = 2
+    e_index = 3
+    
+    theta_min=0 #inclusive
+    theta_max=77#exclusive
+    num_theta=77
+    
+    phi_min=0 #inclusive
+    phi_max=265 #exclusive
+    num_phi=265 
+    def __init__(self,fname=None):
+        if fname is not None:
+            self.readfile(fname)
+        
+    def readfile(self,fname):
+        f = open('qa-recluster-x2-crystals.txt')
+        tmp = [x for x in csv.reader(f,delimiter=' ')]
+        for i in f:
+            print self.tmp
+        tmp = [ [int(x[0]), int(x[3]), int(x[6]), float(x[9])] for x in tmp] 
+        if self.v is None: 
+            self.v = tmp
+        else:
+            self.v+=tmp
+        f.close()
+    
+    def hitmaps(self):
+        hitmaps = [HitMap(self.num_phi,self.num_theta) for i in range(self.numEvent())]
+        for x in self.v: hitmaps[x[self.event_index]].acc(x[self.phi_index],x[self.theta_index],x[self.e_index])
+        for c in hitmaps: c.compute_laplacian()
+        return hitmaps
+            
+    def numEvent(self):
+        self.event_max = max(x[self.event_index] for x in self.v)
+        self.num_event = self.event_max+1
+        return self.num_event
+         
+    def process(self): #find all the bounds
+        self.theta_min = min(x[self.theta_index] for x in self.v)
+        assert(self.theta_min==0)
+        self.theta_max = max(x[self.theta_index] for x in self.v)
+        self.num_theta = self.theta_max+1
+        self.phi_min = min(x[self.phi_index] for x in self.v)
+        assert(self.phi_min==0)
+        self.phi_max = max(x[self.phi_index] for x in self.v)
+        self.num_phi = self.phi_max+1
+        self.event_min = min(x[self.event_index] for x in self.v)
+        assert(self.event_min==0)
+        self.event_max = max(x[self.event_index] for x in self.v)
+        self.num_event = self.event_max+1 
 
 class HitMap:
-    def __init__(self):
+    
+    def __init__(self,num_phi,num_theta):
         #hits is structred as theta,phi
         self.hits = np.zeros((num_phi,num_theta))
-        pass
-    def acc(self,x): #x are array(eventno thetaindex, phiindex, energy) from v
-        self.hits[x[phi_index],x[theta_index]]+=x[e_index] #imshow maps first index to y axis and second to x axis
+        
+    def acc(self,phi,theta,energy): #x are array(eventno thetaindex, phiindex, energy) from v
+        self.hits[phi,theta]+=energy #imshow maps first index to y axis and second to x axis
+        
     def compute_laplacian(self):
         self.lpc = laplacian(self.hits)
+        
     def sumE(self,cluster):
         return self.sumE_from_hits(self.hits,cluster)
+    
     @classmethod
     def sumE_from_hits(self,hits,cluster):
         xlist,ylist = zip(*cluster)
