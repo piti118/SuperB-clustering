@@ -1,0 +1,3 @@
+joinpdf -o plot/BB.pdf plot/BB_*.pdf
+joinpdf -o plot/one_photon.pdf plot/one_photon_*.pdf
+joinpdf -o plot/cutoff.pdf plot/cutoff_*.pdf

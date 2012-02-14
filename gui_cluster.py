@@ -12,16 +12,21 @@ def main():
     hmfsol.process()
     sol_hitmaps=hmfsol.hitmaps()
     
-    num_row=2
+    num_row=10
     num_col=4
     raw_im = [None]*num_row
     seed_im = [None]*num_row
     cluster_im = [None]*num_row
     clustering = Clustering()
     
-    fig, axs = plt.subplots(num_row, 4, sharex=True, sharey=True)
+    fig, axs = plt.subplots(num_row, num_col, sharex=True, sharey=True)
     fig.subplots_adjust(hspace=0.05,wspace=0.05)
     fig.subplots_adjust(bottom=0.25) #reserve space for controls
+    
+    axs[0,0].set_title('hitmap')
+    axs[0,1].set_title('seeds')
+    axs[0,2].set_title('clusters')
+    axs[0,3].set_title('solution')
     
     for ax in axs[-1,:]: ax.set_xlabel('theta')
     for ax in axs[:,0]: ax.set_ylabel('phi')
