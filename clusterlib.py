@@ -33,7 +33,7 @@ class HitMapFile:
             self.readfile(fname)
         
     def readfile(self,fname):
-        f = open('qa-recluster-x2-crystals.txt')
+        f = open(fname)
         tmp = [x for x in csv.reader(f,delimiter=' ')]
         for i in f:
             print self.tmp
@@ -56,16 +56,16 @@ class HitMapFile:
         return self.num_event
          
     def process(self): #find all the bounds
-        self.theta_min = min(x[self.theta_index] for x in self.v)
-        assert(self.theta_min==0)
-        self.theta_max = max(x[self.theta_index] for x in self.v)
-        self.num_theta = self.theta_max+1
-        self.phi_min = min(x[self.phi_index] for x in self.v)
-        assert(self.phi_min==0)
-        self.phi_max = max(x[self.phi_index] for x in self.v)
-        self.num_phi = self.phi_max+1
-        self.event_min = min(x[self.event_index] for x in self.v)
-        assert(self.event_min==0)
+        # self.theta_min = min(x[self.theta_index] for x in self.v)
+        # assert(self.theta_min==0)
+        # self.theta_max = max(x[self.theta_index] for x in self.v)
+        # self.num_theta = self.theta_max+1
+        # self.phi_min = min(x[self.phi_index] for x in self.v)
+        # assert(self.phi_min==0)
+        # self.phi_max = max(x[self.phi_index] for x in self.v)
+        # self.num_phi = self.phi_max+1
+        # self.event_min = min(x[self.event_index] for x in self.v)
+        # assert(self.event_min==0)
         self.event_max = max(x[self.event_index] for x in self.v)
         self.num_event = self.event_max+1 
 
@@ -212,7 +212,7 @@ def test_op():
 
 class Visualizer:
     @classmethod
-    def show_hits(self,hits, ax=None,cutoff=None):
+    def show_hits(self,hits, ax=None,cutoff=0.0005):
         if ax is None: ax = gca()
         toshow = np.copy(hits)
         if(cutoff is not None):

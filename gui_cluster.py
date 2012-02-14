@@ -3,18 +3,23 @@ import matplotlib.pyplot as plt
 from clusterlib import *
 def main():
     #load data
-    hmf = HitMapFile('qa-recluster-x2-crystals.txt')
+    hmf = HitMapFile('raw/qa-recluster-x2-crystals.txt')
     hmf.process()
     hitmaps = hmf.hitmaps()
+
+    #load solution
+    hmfsol = HitMapFile('raw/qa-recluster-x0-crystals.txt')
+    hmfsol.process()
+    sol_hitmaps=hmfsol.hitmaps()
     
     num_row=2
-    num_col=3
+    num_col=4
     raw_im = [None]*num_row
     seed_im = [None]*num_row
     cluster_im = [None]*num_row
     clustering = Clustering()
     
-    fig, axs = plt.subplots(num_row, 3, sharex=True, sharey=True)
+    fig, axs = plt.subplots(num_row, 4, sharex=True, sharey=True)
     fig.subplots_adjust(hspace=0.05,wspace=0.05)
     fig.subplots_adjust(bottom=0.25) #reserve space for controls
     
@@ -22,12 +27,13 @@ def main():
     for ax in axs[:,0]: ax.set_ylabel('phi')
     for i in range(num_row):
         hits = hitmaps[i].hits
-        _,raw_im[i] = Visualizer.show_hits(hits,axs[i,0],cutoff=0.0005)
+        _,raw_im[i] = Visualizer.show_hits(hits,axs[i,0])
         seeds = clustering.find_seed(hits)
         Visualizer.show_seeds(seeds,hits,axs[i,1])
         cluster = clustering.find_clusters(hitmaps[i],seeds)
         Visualizer.show_cluster(cluster,axs[i,2],hits)
-        fig.canvas.draw()
+        Visualizer.show_hits(sol_hitmaps[i].hits,axs[i,3])
+        
     
     axcolor = 'lightgoldenrodyellow'
     ax_seed_cutoff = fig.add_axes([0.25, 0.1, 0.65, 0.03], axisbg=axcolor)
@@ -47,6 +53,7 @@ def main():
             Visualizer.show_seeds(seeds,hitmaps[i].hits,axs[i,1])
             cluster = clustering.find_clusters(hitmaps[i],seeds)
             Visualizer.show_cluster(cluster,axs[i,2],hitmaps[i].hits)
+            fig.canvas.draw()
             
     s_seed_cutoff.on_changed(update)
     s_min_expand.on_changed(update)
